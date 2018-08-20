@@ -10,6 +10,8 @@ from scipy import interpolate
 
 from wrf import to_np, getvar, interplevel, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords, ALL_TIMES
 
+class post
+
 def interpnan(array):
 
   x = np.arange(0, array.shape[1])
@@ -55,12 +57,14 @@ init_time = file_wrf[11:21]+" "+file_wrf[22:24]+"Z"
 
 pathout = "/home/ekalina/bWRF/plots/2017100900/"
 
+def run_post(self,forecast_out,post_out)
+
 # Download the states and coastlines
 states = NaturalEarthFeature(category='cultural', scale='50m', facecolor='none',
                              name='admin_1_states_provinces_shp')
 
 # Open the NetCDF file
-ncfile = Dataset(path_wrf+file_wrf)
+ncfile = Dataset(forecast_out)
 
 # Get the times and convert to datetimes
 times = getvar(ncfile, "Times", timeidx=ALL_TIMES, meta=False)
@@ -209,10 +213,10 @@ if sfc_switch == 1:
     plt_time=plt_time[0:13]
 
     plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": SLP (fill, hPa), 10-m wind (barbs, kt), LML Ref (fill, dBZ), LML WBT (red, degC)")
-    fig.savefig(pathout+"sfc/"+fileout,bbox_inches='tight')
+    fig.savefig(post_out+"sfc/"+fileout,bbox_inches='tight')
     plt.close(fig)
 
-  os.system("convert -delay 25 -dispose background "+pathout+"sfc/sfc*.png -loop 0 "+pathout+"sfc/sfc.gif")
+  os.system("convert -delay 25 -dispose background "+post_out+"sfc/sfc*.png -loop 0 "+post_out+"sfc/sfc.gif")
 
 if switch_500mb == 1:
 
@@ -262,10 +266,10 @@ if switch_500mb == 1:
     plt_time=plt_time[0:13]
 
     plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": 500-mb height (black, dm), temp (red, degC), and wind (fill/barbs, kt)")
-    fig.savefig(pathout+"500mb/"+fileout,bbox_inches='tight')
+    fig.savefig(post_out+"500mb/"+fileout,bbox_inches='tight')
     plt.close(fig)
 
-  os.system("convert -delay 25 -dispose background "+pathout+"500mb/500mb*.png -loop 0 "+pathout+"500mb/500mb.gif")
+  os.system("convert -delay 25 -dispose background "+post_out+"500mb/500mb*.png -loop 0 "+post_out+"500mb/500mb.gif")
 
 if switch_700mb == 1:
 
@@ -324,10 +328,10 @@ if switch_700mb == 1:
     plt_time=plt_time[0:13]
 
     plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": 700-mb hgt (black, dm), T (red, degC), wind (barbs, kt), VV (cm/s), rh (fill, %)")
-    fig.savefig(pathout+"700mb/"+fileout,bbox_inches='tight')
+    fig.savefig(post_out+"700mb/"+fileout,bbox_inches='tight')
     plt.close(fig)
 
-  os.system("convert -delay 25 -dispose background "+pathout+"700mb/700mb*.png -loop 0 "+pathout+"700mb/700mb.gif")
+  os.system("convert -delay 25 -dispose background "+post_out+"700mb/700mb*.png -loop 0 "+post_out+"700mb/700mb.gif")
 
 if switch_300mb == 1:
 
@@ -374,7 +378,7 @@ if switch_300mb == 1:
     plt_time=plt_time[0:13]
 
     plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": 300-mb height (black, dm), wind (barbs, kt), and divergence x 10^5 (red/blue, s^-1)")
-    fig.savefig(pathout+"300mb/"+fileout,bbox_inches='tight')
+    fig.savefig(post_out+"300mb/"+fileout,bbox_inches='tight')
     plt.close(fig)
 
-  os.system("convert -delay 25 -dispose background "+pathout+"300mb/300mb*.png -loop 0 "+pathout+"300mb/300mb.gif")
+  os.system("convert -delay 25 -dispose background "+post_out+"300mb/300mb*.png -loop 0 "+post_out+"300mb/300mb.gif")
