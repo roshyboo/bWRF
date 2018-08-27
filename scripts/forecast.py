@@ -1,4 +1,6 @@
-class forecast
+import os
 
-  def run_forecast
-    ./wrf.exe >& wrf.log &
+class forecast:
+
+  def run_forecast(self):
+    os.system("./wrf.exe > wrf.log")

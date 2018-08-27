@@ -1,41 +1,59 @@
-#! python
+#! /home/ekalina/miniconda2/bin/python
 
 import os, sys
+
+# Get arguments passed to script.
+YMDH=sys.argv[1]
+expt=sys.argv[2] 
+HOMEbwrf=sys.argv[3]
+WORKbwrf=sys.argv[4]
+
+# Make a unique work directory for this cycle.
+WORKbwrf=WORKbwrf+'/'+expt+'/'+YMDH+'/'
 
 # What is the scripts directory?
 SCRIPTSbwrf=os.path.join(HOMEbwrf+'/scripts')
 
 # Where is the parm directory?
-PARMbwrf=os.path.join(HOMEbwrf+'/parm')
+PARMbwrf=os.path.join(HOMEbwrf+'/parm/')
 
 # Add the scripts directory to the system path.
 sys.path.append(SCRIPTSbwrf)
 
 # Import various packages from the scripts directory.
 import ConfigParser
-cp = ConfigParser.RawConfigParser()
+config = ConfigParser.ConfigParser()
 
-import launch, inputter, wps, forecast, post
+import inputs, wps, forecast, post
 
 # Designate and create some directories.
-CYCLEpath=launch.make_dirs(WORKbwrf+'/'+exp+'/'+YMDH+'/','-p')
-INPUTpath=launch.make_dirs(CYCLEpath+'bwrfdata')
-WPSpath=launch.make_dirs(CYCLEpath+'wps/')
-UNGRIBpath=launch.make_dirs(WPSpath+'ungrib/')
-METGRIBpath=launch.make_dirs(WPSpath+'metgrid/')
-FORECASTpath=launch.make_dirs(CYCLEpath+'fcst/')
-POSTpath=launch.make_dirs(CYCLEpath+'post/')
+INPUTpath=WORKbwrf+'bwrfdata/'
+WPSpath=WORKbwrf+'wps/'
+UNGRIBpath=WPSpath+'ungrib/'
+METGRIBpath=WPSpath+'metgrid/'
+FORECASTpath=WORKbwrf+'fcst/'
+POSTpath=WORKbwrf+'post/'
+
+os.system("mkdir -p "+WORKbwrf)
+
+os.system("mkdir "+INPUTpath)
+os.system("mkdir "+WPSpath)
+os.system("mkdir "+UNGRIBpath)
+os.system("mkdir "+METGRIBpath)
+os.system("mkdir "+FORECASTpath)
+os.system("mkdir "+POSTpath)
+
+config.read([PARMbwrf+'bwrf.conf'])
 
 # Cat the confs.
-CONFpath = CYCLEpath+exp+'/'+YMDH+".conf"
-os.system("cat "+PARMbwrf+"/*.conf >& "+CONFpath)
+#os.system("cat "+PARMbwrf+"/*.conf > "+WORKbwrf+YMDH+".conf")
 
 # Read the cycle conf.
-cp.read(CONFpath)
-gfs_dataset=cp.get(inputter,gfs)
-gfs_grib_item=cp.get(inputter,gfs_gribA)
+#cp.read(WORKbwrf+YMDH+".conf")
+gfs_dataset=config.get("inputs","gfs")
+gfs_grib_item=config.get("inputs","gfs_gribA")
 
-inputter.fetch_item(gfs_url,gfs_grib_item,INPUTpath)
+inputs.fetch_item(gfs_dataset,gfs_grib_item)
 ###wps.geogrid()
 wps.ungrib.linkgrib(UNGRIBpath)
 wps.ungrib.run_ungrib()

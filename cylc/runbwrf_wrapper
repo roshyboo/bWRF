@@ -1,10 +1,12 @@
 #!/bin/sh
 
-YMDH = 2017100900
-HOMEbwrf = /home/ekalina/bWRF
-WORKbwrf = /home/ekalina/pytmp
-expt = operational
+set -x
+
+YMDH=2017100900
+HOMEbwrf=/home/ekalina/bWRF
+WORKbwrf=/home/ekalina/pytmp
+expt=operational
 
 cd ${HOMEbwrf}/cylc
 
-./run_bwrf.py "$YMDH" "config.EXPT=$expt" "config.HOMEbwrf=$HOMEbwrf" "config.WORKbwrf=$WORKbwrf"
+./run_bwrf.py "$YMDH" "$expt" "$HOMEbwrf" "$WORKbwrf"
