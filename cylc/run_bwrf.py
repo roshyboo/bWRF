@@ -53,6 +53,20 @@ config.read([PARMbwrf+'bwrf.conf'])
 gfs_dataset=config.get("inputs","gfs")
 gfs_grib_item=config.get("inputs","gfs_gribA")
 
+# Expand the gfs grib item into a list of files.
+run_hours = config.getfloat("wrf","run_hours")
+interval_hours = config.getfloat("wrf","interval_seconds")/3600.
+
+config.set("inputs","aHH","00")
+print(config.get("inputs","aHH"))
+ihr = 0
+while ihr <= run_hours:
+  fahr = ihr
+  config.set("inputs","fahr",fahr)
+  print(config.get("inputs","gfs_gribA"))
+  ihr = ihr + interval_hours
+
+
 inputs.fetch_item(gfs_dataset,gfs_grib_item)
 ###wps.geogrid()
 wps.ungrib.linkgrib(UNGRIBpath)
