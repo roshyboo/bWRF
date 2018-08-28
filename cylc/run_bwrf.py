@@ -55,19 +55,17 @@ gfs_grib_item=config.get("inputs","gfs_gribA")
 
 # Expand the gfs grib item into a list of files.
 run_hours = config.getfloat("wrf","run_hours")
-interval_hours = config.getfloat("wrf","interval_seconds")/3600.
+interval_hours = config.getfloat("wrf","interval_seconds")/3600
 
-config.set("inputs","aHH","00")
-print(config.get("inputs","aHH"))
 ihr = 0
 while ihr <= run_hours:
-  fahr = ihr
-  config.set("inputs","fahr",fahr)
-  print(config.get("inputs","gfs_gribA"))
+  fahr = int(ihr)
+  config.set("inputs","fahr",'{:03d}'.format(fahr))
+  gfs_grib_item = config.get("inputs","gfs_gribA")
+  inputs.fetch_item(gfs_dataset,gfs_grib_item,config)
   ihr = ihr + interval_hours
 
-
-inputs.fetch_item(gfs_dataset,gfs_grib_item)
+###inputs.fetch_item(gfs_dataset,gfs_grib_item,config)
 ###wps.geogrid()
 wps.ungrib.linkgrib(UNGRIBpath)
 wps.ungrib.run_ungrib()
