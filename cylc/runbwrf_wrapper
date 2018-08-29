@@ -2,11 +2,11 @@
 
 set -x
 
-YMDH=2017100900
-HOMEbwrf=/home/ekalina/bWRF
-WORKbwrf=/home/ekalina/pytmp
-expt=operational
+export YMDH="2017100900"
+export HOMEdir="/home/ekalina/bWRF"
+export WORKdir="/home/ekalina/pytmp"
+export expt="operational"
 
-cd ${HOMEbwrf}/cylc
+cd ${HOMEdir}/cylc
 
-./run_bwrf.py "$YMDH" "$expt" "$HOMEbwrf" "$WORKbwrf"
+./run_bwrf.py
