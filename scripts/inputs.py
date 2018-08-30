@@ -1,6 +1,6 @@
 import os
 
 def fetch_item(url,item,conf):
-  data_dir = conf.get("bwrf_data","gfs")
-  os.system("wget "+url+item)
-  os.system("mv "+item+" "+data_dir+item)
+  gfs_dir = conf.get("bwrf_data","gfs")
+  os.system("wget -O "+gfs_dir+item+" "+url+item)
+#  os.system("mv "+item+" "+gfs_dir+item)

@@ -65,7 +65,9 @@ while ihr <= run_hours:
 #  inputs.fetch_item(gfs_dataset,gfs_grib_item,config)
   ihr = ihr + interval_hours
 
-wps.run_ungrib(config)
-wps.metgrid.run_metgrid()
-forecast.run_forecast()
-post.run_post(FORECASTpath,POSTpath)
+wps.init_wps(config)
+#wps.run_geogrid(config)
+#wps.run_ungrib(config)
+wps.run_metgrid(config)
+#forecast.run_forecast()
+#post.run_post(FORECASTpath,POSTpath)
