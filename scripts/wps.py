@@ -6,7 +6,6 @@ def lnsf_wps(item,WPSwork):
 def init_wps(conf):
 
 # Get relevant conf file objects.
-  FIXbwrf=conf.get("DEFAULT","FIXbwrf")
   WPShome = conf.get("DEFAULT","WPShome")
   METGRIDhome = conf.get("DEFAULT","METGRIDhome")
   VTABLEhome = conf.get("wps","VTABLEhome")
@@ -16,19 +15,10 @@ def init_wps(conf):
   METGRIDexe = conf.get("exec","metgrid")
   gfs = conf.get("bwrf_data","gfs")
 
-  geogrid_d01_file=conf.get("wps","geogrid_d01_file")
   vtable = conf.get("wps","vtable")
   metgrid_table = conf.get("wps","metgrid_table")
   link_script = conf.get("wps","link_script")
   namelist = conf.get("wps","namelist")
-
-# Are geogrid data already available?
-# If not, don't run it again.
-  geogrid_flag = os.path.isfile(FIXbwrf+"/"+geogrid_d01_file)
-  if geogrid_flag:
-    lnsf_wps(FIXbwrf+"/"+geogrid_d01_file,WPSwork)
-  else:
-    print("No geogrid data found. You must run geogrid.")
 
 # Link files needed for running WPS to WPSwork.
   lnsf_wps(VTABLEhome+"/"+vtable,WPSwork+"/Vtable")
@@ -45,11 +35,20 @@ def init_wps(conf):
 
 def run_geogrid(conf):
 
+# Are geogrid data already available?
+# If not, don't run it again.
+  FIXbwrf=conf.get("DEFAULT","FIXbwrf")
   WPSwork = conf.get("DEFAULT","WPSwork")
-  GEOGRIDexe = conf.get("exec","geogrid")
+  geogrid_d01_file=conf.get("wps","geogrid_d01_file")
 
-  os.chdir(WPSwork)
-  os.system("./"+GEOGRIDexe)
+  geogrid_flag = os.path.isfile(FIXbwrf+"/"+geogrid_d01_file)
+  if geogrid_flag:
+    lnsf_wps(FIXbwrf+"/"+geogrid_d01_file,WPSwork)
+  else:
+    print("No geogrid data found. Will run geogrid.")
+    GEOGRIDexe = conf.get("exec","geogrid")
+    os.chdir(WPSwork)
+    os.system("./"+GEOGRIDexe)
 
 def run_ungrib(conf):
 
