@@ -2,6 +2,7 @@ from netCDF4 import Dataset
 from datetime import datetime
 import os
 import numpy as np
+import glob
 import matplotlib.pyplot as plt
 from matplotlib.cm import get_cmap
 import cartopy.crs as crs
@@ -40,33 +41,54 @@ def divergence(f,dx):
     num_dims = len(f)
     return np.ufunc.reduce(np.add, [np.gradient(f[i], dx, axis=i)*10.0**5.0 for i in range(num_dims)])
 
-sfc_switch = 1
-switch_700mb = 0
-switch_500mb = 0
-switch_300mb = 0
+def lnsf_post(item,POSTwork):
+  os.system("ln -sf "+item+" "+POSTwork)
 
-blat=40.033381
-blon=-105.256469
+def init_post(conf):
 
-path_wrf = "/home/ekalina/bWRF/WRFV3/run/"
-file_wrf = "wrfout_d01_2017-10-09_00:00:00"
+  WRFwork = conf.get("DEFAULT","WRFwork") 
+  POSTwork = conf.get("DEFAULT","POSTwork")
 
-init_time = file_wrf[11:21]+" "+file_wrf[22:24]+"Z"
+  POSTwork_exists=os.path.isdir(POSTwork)
+  if not POSTwork_exists:
+    os.mkdir(POSTwork)
+    os.mkdir(POSTwork+"/sfc")
+    os.mkdir(POSTwork+"/700mb")
+    os.mkdir(POSTwork+"/500mb")
+    os.mkdir(POSTwork+"/300mb")
 
-pathout = "/home/ekalina/bWRF/plots/2017100900/"
+  lnsf_post(WRFwork+"/wrfout*",POSTwork)
 
-def run_post(self,forecast_out,post_out):
+def run_post(conf):
+
+  sfc_switch = conf.getint("post","plot_sfc")
+  switch_700mb = conf.getint("post","plot_700mb")
+  switch_500mb = conf.getint("post","plot_500mb")
+  switch_300mb = conf.getint("post","plot_300mb")
+
+  blat = conf.getfloat("post","blat")
+  blon = conf.getfloat("post","blon")
+
+  dx = conf.getfloat("wrf","dx")
+
+  POSTwork = conf.get("DEFAULT","POSTwork")
+  os.chdir(POSTwork)
+
+  file_wrf = glob.glob("wrfout*")[0]
+  print("Processing "+file_wrf)
+  init_time = file_wrf[11:21]+" "+file_wrf[22:24]+"Z"
 
 # Download the states and coastlines
   states = NaturalEarthFeature(category='cultural', scale='50m', facecolor='none',
                              name='admin_1_states_provinces_shp')
 
 # Open the NetCDF file
-  ncfile = Dataset(forecast_out)
+  ncfile = Dataset(file_wrf)
 
 # Get the times and convert to datetimes
   times = getvar(ncfile, "Times", timeidx=ALL_TIMES, meta=False)
   dtimes = [datetime.strptime(str(atime), '%Y-%m-%dT%H:%M:%S.000000000') for atime in times]
+  numTimes = len(times)
 
 # Map factors
 # mfmx = getvar(ncfile, "MAPFAC_MX", timeidx=ALL_TIMES)
@@ -120,7 +142,6 @@ def run_post(self,forecast_out,post_out):
     tc_700 = smooth2d(tc_700, 3)
     w_700 = smooth2d(w_700, 3)
 
-  dx=30000.
 # dx=30000.*mfmx # mfmx = map factor on mass grid in x direction
 # dy=30000.*mfmy # mfmy = map factor on mass grid in y direction
   div_300 = smooth2d(divergence([u_300*0.514444, v_300*0.514444], dx), 3) # kt to m/s
@@ -146,8 +167,6 @@ def run_post(self,forecast_out,post_out):
 
   div_levels=np.arange(2,20,2)
   conv_levels=np.arange(-20,0,2)
-
-  numTimes = len(slp.Time)
 
 # Get the 10-m u and v wind components.
   u_10m, v_10m = getvar(ncfile, "uvmet10", units="kt", timeidx=ALL_TIMES)
@@ -211,10 +230,10 @@ def run_post(self,forecast_out,post_out):
       plt_time=plt_time[0:13]
 
       plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": SLP (fill, hPa), 10-m wind (barbs, kt), LML Ref (fill, dBZ), LML WBT (red, degC)")
-      fig.savefig(post_out+"sfc/"+fileout,bbox_inches='tight')
+      fig.savefig("sfc/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background "+post_out+"sfc/sfc*.png -loop 0 "+post_out+"sfc/sfc.gif")
+    os.system("convert -delay 25 -dispose background sfc/sfc*.png -loop 0 sfc/sfc.gif")
 
   if switch_500mb == 1:
 
@@ -264,10 +283,10 @@ def run_post(self,forecast_out,post_out):
       plt_time=plt_time[0:13]
 
       plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": 500-mb height (black, dm), temp (red, degC), and wind (fill/barbs, kt)")
-      fig.savefig(post_out+"500mb/"+fileout,bbox_inches='tight')
+      fig.savefig("500mb/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background "+post_out+"500mb/500mb*.png -loop 0 "+post_out+"500mb/500mb.gif")
+    os.system("convert -delay 25 -dispose background 500mb/500mb*.png -loop 0 500mb/500mb.gif")
 
   if switch_700mb == 1:
 
@@ -326,10 +345,10 @@ def run_post(self,forecast_out,post_out):
       plt_time=plt_time[0:13]
 
       plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": 700-mb hgt (black, dm), T (red, degC), wind (barbs, kt), VV (cm/s), rh (fill, %)")
-      fig.savefig(post_out+"700mb/"+fileout,bbox_inches='tight')
+      fig.savefig("700mb/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background "+post_out+"700mb/700mb*.png -loop 0 "+post_out+"700mb/700mb.gif")
+    os.system("convert -delay 25 -dispose background 700mb/700mb*.png -loop 0 700mb/700mb.gif")
 
   if switch_300mb == 1:
 
@@ -376,7 +395,7 @@ def run_post(self,forecast_out,post_out):
       plt_time=plt_time[0:13]
 
       plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": 300-mb height (black, dm), wind (barbs, kt), and divergence x 10^5 (red/blue, s^-1)")
-      fig.savefig(post_out+"300mb/"+fileout,bbox_inches='tight')
+      fig.savefig("300mb/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background "+post_out+"300mb/300mb*.png -loop 0 "+post_out+"300mb/300mb.gif")
+    os.system("convert -delay 25 -dispose background 300mb/300mb*.png -loop 0 300mb/300mb.gif")

@@ -48,7 +48,7 @@ def run_real(conf):
   REALexe = conf.get("exec","real")
 
   os.chdir(WRFwork)
-  os.system("./"+REALexe)
+  os.system("./"+REALexe+" > real.log")
 
 def run_forecast(conf):
 
@@ -56,4 +56,4 @@ def run_forecast(conf):
   WRFexe = conf.get("exec","wrf")
 
   os.chdir(WRFwork)
-  os.system("./"+WRFexe)
+  os.system("./"+WRFexe+" > wrf.log")
