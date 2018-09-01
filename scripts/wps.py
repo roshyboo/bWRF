@@ -20,6 +20,10 @@ def init_wps(conf):
   link_script = conf.get("wps","link_script")
   namelist = conf.get("wps","namelist")
 
+# Make the WPS work directory.
+  if not os.path.exists(WPSwork):
+    os.mkdir(WPSwork)    
+
 # Link files needed for running WPS to WPSwork.
   lnsf_wps(VTABLEhome+"/"+vtable,WPSwork+"/Vtable")
   lnsf_wps(METGRIDhome+"/"+metgrid_table,WPSwork+"/METGRID.TBL")
