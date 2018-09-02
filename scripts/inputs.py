@@ -1,7 +1,7 @@
 import os
 
 def fetch_item(url,item,input_dir):
-  os.system("wget -O "+input_dir+item+" "+url+item)
+  os.system("wget -O "+input_dir+"/"+item+" "+url+"/"+item)
 
 def init_input(conf):
   inputroot=conf.get("bwrf_data","inputroot")
@@ -19,8 +19,8 @@ def run_input(conf):
   gfs_input_dir=conf.get("bwrf_data","gfs")
 
 # Expand the gfs grib item into a list of files.
-  run_hours = config.getfloat("wrf","run_hours")
-  interval_hours = config.getfloat("wrf","interval_seconds")/3600
+  run_hours = conf.getfloat("wrf","run_hours")
+  interval_hours = conf.getfloat("wrf","interval_seconds")/3600
 
   ihr = 0
   while ihr <= run_hours:
