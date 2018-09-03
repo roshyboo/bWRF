@@ -2,7 +2,7 @@
 
 set -x
 
-export YMDH="2018090118"
+export YMDH="AUTO"
 export HOMEdir="/home/ekalina/bWRF"
 export WORKdir="/home/ekalina/pytmp"
 export expt="operational"
