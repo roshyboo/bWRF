@@ -153,7 +153,7 @@ def run_post(conf):
   twb = getvar(ncfile, "twb", units="degC", timeidx=ALL_TIMES)
 
   slp_levels=np.arange(980,1040,2)
-  z_levels=np.arange(504,620,6)
+  z_levels=np.arange(504,620,3)
   z_levels_300=np.arange(804,996,6)
   z_levels_700=np.arange(285,351,3)
   tc_levels=np.arange(-40,30,2)
