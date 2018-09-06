@@ -4,6 +4,7 @@ import os
 import numpy as np
 import glob
 import matplotlib.pyplot as plt
+plt.switch_backend('agg')
 from matplotlib.cm import get_cmap
 import cartopy.crs as crs
 from cartopy.feature import NaturalEarthFeature
@@ -251,7 +252,8 @@ def run_post(conf):
       ax.coastlines('50m', linewidth=0.8)
 
 #   wind color fill
-      plt.contourf(to_np(lons), to_np(lats), to_np(wspeed_500[itime,:,:]), transform=crs.PlateCarree(),
+      if np.max(wspeed_500[itime,:,:]) > np.min(wspeed_levels):
+        plt.contourf(to_np(lons), to_np(lats), to_np(wspeed_500[itime,:,:]), transform=crs.PlateCarree(),
              cmap=get_cmap("rainbow"), levels=wspeed_levels)
 
 #   Make the 500 mb height contours.
