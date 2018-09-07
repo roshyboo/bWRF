@@ -1,0 +1,6 @@
+[submodule "sorc/WPS"]
+	path = sorc/WPS
+	url = https://github.com/roshyboo/WPS
+[submodule "sorc/WRF"]
+	path = sorc/WRF
+	url = https://github.com/roshyboo/WRF
