@@ -5,8 +5,13 @@ def lnsf_wps(item,WPSwork):
 
 def init_wps(conf):
 
+  print("-----------------------------------")
+  print("------------IN WPS TASK------------")
+  print("-----------------------------------")
+
 # Get relevant conf file objects.
   WPShome = conf.get("DEFAULT","WPShome")
+  GEOGRIDhome = conf.get("DEFAULT","GEOGRIDhome")
   METGRIDhome = conf.get("DEFAULT","METGRIDhome")
   VTABLEhome = conf.get("wps","VTABLEhome")
   WPSwork = conf.get("DEFAULT","WPSwork")
@@ -16,6 +21,7 @@ def init_wps(conf):
   gfs = conf.get("bwrf_data","gfs")
 
   vtable = conf.get("wps","vtable")
+  geogrid_table = conf.get("wps","geogrid_table")
   metgrid_table = conf.get("wps","metgrid_table")
   link_script = conf.get("wps","link_script")
   namelist = conf.get("wps","namelist")
@@ -26,6 +32,7 @@ def init_wps(conf):
 
 # Link files needed for running WPS to WPSwork.
   lnsf_wps(VTABLEhome+"/"+vtable,WPSwork+"/Vtable")
+  lnsf_wps(GEOGRIDhome+"/"+geogrid_table,WPSwork+"/GEOGRID.TBL")
   lnsf_wps(METGRIDhome+"/"+metgrid_table,WPSwork+"/METGRID.TBL")
   lnsf_wps(WPShome+"/"+link_script,WPSwork)
   lnsf_wps(WPShome+"/"+GEOGRIDexe,WPSwork)
@@ -49,10 +56,19 @@ def run_geogrid(conf):
   if geogrid_flag:
     lnsf_wps(FIXbwrf+"/"+geogrid_d01_file,WPSwork)
   else:
-    print("No geogrid data found. Will run geogrid.")
-    GEOGRIDexe = conf.get("exec","geogrid")
     os.chdir(WPSwork)
-    os.system("./"+GEOGRIDexe)
+    grep_code = os.system("grep 'Successful completion of program geogrid.exe' geogrid.log")
+    if grep_code == 256:
+      print("Did not see success complete in geogrid.log; will run geogrid.")
+      print("-----------------------------------")
+      print("----------RUNNING GEOGRID----------")
+      print("-----------------------------------")
+      GEOGRIDexe = conf.get("exec","geogrid")
+      os.system("./"+GEOGRIDexe)
+
+      grep_code = os.system("grep 'Successful completion of program geogrid.exe' geogrid.log")
+      if grep_code == 256:
+        raise Exception('Program geogrid.exe did not run successfully.')
 
 def run_ungrib(conf):
 
@@ -60,7 +76,17 @@ def run_ungrib(conf):
   UNGRIBexe = conf.get("exec","ungrib")
 
   os.chdir(WPSwork)
-  os.system("./"+UNGRIBexe)
+  grep_code = os.system("grep 'Successful completion of program ungrib.exe' ungrib.log")
+  if grep_code == 256:
+    print("Did not see success complete in ungrib.log; will run ungrib.")
+    print("-----------------------------------")
+    print("----------RUNNING UNGRIB-----------")
+    print("-----------------------------------")
+    os.system("./"+UNGRIBexe)
+
+    grep_code = os.system("grep 'Successful completion of program ungrib.exe' ungrib.log")
+    if grep_code == 256:
+      raise Exception('Program ungrib.exe did not run successfully.')
 
 def run_metgrid(conf):
 
@@ -68,4 +94,14 @@ def run_metgrid(conf):
   METGRIDexe = conf.get("exec","metgrid")
 
   os.chdir(WPSwork)
-  os.system("./"+METGRIDexe)
+  grep_code = os.system("grep 'Successful completion of program metgrid.exe' metgrid.log")
+  if grep_code == 256:
+    print("Did not see success complete in metgrid.log; will run metgrid.")
+    print("-----------------------------------")
+    print("----------RUNNING METGRID----------")
+    print("-----------------------------------")
+    os.system("./"+METGRIDexe)
+
+    grep_code = os.system("grep 'Successful completion of program metgrid.exe' metgrid.log")
+    if grep_code == 256:
+      raise Exception('Program metgrid.exe did not run successfully.')
