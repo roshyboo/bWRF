@@ -1,9 +1,18 @@
 import os
 
 def fetch_item(url,item,input_dir):
-  os.system("wget -O "+input_dir+"/"+item+" "+url+"/"+item)
+  item_exists = os.path.isfile(input_dir+"/"+item)
+  if not item_exists:
+    os.system("wget -O "+input_dir+"/"+item+" "+url+"/"+item)
+  else:
+    print("Skip pulling "+item+" because file already exists.")
 
 def init_input(conf):
+
+  print("-----------------------------------")
+  print("-----------IN INPUT TASK-----------")
+  print("-----------------------------------")
+
   inputroot=conf.get("bwrf_data","inputroot")
   gfs_input_dir=conf.get("bwrf_data","gfs")
 
@@ -27,5 +36,10 @@ def run_input(conf):
     fahr = int(ihr)
     conf.set("inputs","fahr",'{:03d}'.format(fahr))
     gfs_grib_item = conf.get("inputs","gfs_gribA")
+    
     fetch_item(gfs_dataset,gfs_grib_item,gfs_input_dir)
     ihr = ihr + interval_hours
+
+  print("-----------------------------------")
+  print("----------END INPUT TASK-----------")
+  print("-----------------------------------")
