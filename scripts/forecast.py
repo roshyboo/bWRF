@@ -5,6 +5,10 @@ def lnsf_wrf(item,WRFwork):
 
 def init_wrf(conf):
 
+  print("-----------------------------------")
+  print("-----------IN FCST TASK------------")
+  print("-----------------------------------")
+
   FIXbwrf = conf.get("DEFAULT","FIXbwrf")
   WRFhome = conf.get("DEFAULT","WRFhome")
   WRFwork = conf.get("DEFAULT","WRFwork")  
@@ -20,6 +24,9 @@ def init_wrf(conf):
   vegparm = conf.get("wrf","vegparm")
   soilparm = conf.get("wrf","soilparm")
   genparm = conf.get("wrf","genparm")
+  ozone_plev = conf.get("wrf","ozone_plev")
+  ozone_lat = conf.get("wrf","ozone_lat")
+  ozone = conf.get("wrf","ozone")
   qr_acr_qs = conf.get("wrf","qr_acr_qs")
   qr_acr_qg = conf.get("wrf","qr_acr_qg")
   freezeH2O = conf.get("wrf","freezeH2O")
@@ -35,6 +42,9 @@ def init_wrf(conf):
   lnsf_wrf(WRFhome+"/"+vegparm,WRFwork)
   lnsf_wrf(WRFhome+"/"+soilparm,WRFwork)
   lnsf_wrf(WRFhome+"/"+genparm,WRFwork)
+  lnsf_wrf(WRFhome+"/"+ozone,WRFwork)
+  lnsf_wrf(WRFhome+"/"+ozone_plev,WRFwork)
+  lnsf_wrf(WRFhome+"/"+ozone_lat,WRFwork)
   lnsf_wrf(WRFhome+"/"+REALexe,WRFwork)
   lnsf_wrf(WRFhome+"/"+WRFexe,WRFwork)
   lnsf_wrf(FIXbwrf+"/"+qr_acr_qs,WRFwork)
@@ -48,7 +58,18 @@ def run_real(conf):
   REALexe = conf.get("exec","real")
 
   os.chdir(WRFwork)
-  os.system("./"+REALexe+" > real.log")
+
+  grep_code = os.system("grep 'SUCCESS COMPLETE' real.log")
+  if grep_code == 256:
+    print("Did not see success complete in real.log; will run real.")
+    print("-----------------------------------")
+    print("-----------RUNNING REAL------------")
+    print("-----------------------------------")
+    os.system("./"+REALexe+" > real.log")
+
+    grep_code = os.system("grep 'SUCCESS COMPLETE' real.log")
+    if grep_code == 256:
+      raise Exception("Program real.exe did not run successfully.")
 
 def run_forecast(conf):
 
@@ -56,4 +77,15 @@ def run_forecast(conf):
   WRFexe = conf.get("exec","wrf")
 
   os.chdir(WRFwork)
-  os.system("./"+WRFexe+" > wrf.log")
+
+  grep_code = os.system("grep 'SUCCESS COMPLETE' wrf.log")
+  if grep_code == 256:
+    print("Did not see success complete in wrf.log; will run wrf.")
+    print("-----------------------------------")
+    print("-----------RUNNING WRF-------------")
+    print("-----------------------------------")
+    os.system("./"+WRFexe+" > wrf.log")
+
+    grep_code = os.system("grep 'SUCCESS COMPLETE' wrf.log")
+    if grep_code == 256:
+      raise Exception("Program wrf.exe did not run successfully.")
