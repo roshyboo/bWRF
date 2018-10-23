@@ -60,7 +60,7 @@ def run_real(conf):
   os.chdir(WRFwork)
 
   grep_code = os.system("grep 'SUCCESS COMPLETE' real.log")
-  if grep_code == 256:
+  if grep_code > 0:
     print("Did not see success complete in real.log; will run real.")
     print("-----------------------------------")
     print("-----------RUNNING REAL------------")
@@ -68,7 +68,7 @@ def run_real(conf):
     os.system("./"+REALexe+" > real.log")
 
     grep_code = os.system("grep 'SUCCESS COMPLETE' real.log")
-    if grep_code == 256:
+    if grep_code > 0:
       raise Exception("Program real.exe did not run successfully.")
 
 def run_forecast(conf):
@@ -79,7 +79,7 @@ def run_forecast(conf):
   os.chdir(WRFwork)
 
   grep_code = os.system("grep 'SUCCESS COMPLETE' wrf.log")
-  if grep_code == 256:
+  if grep_code > 0:
     print("Did not see success complete in wrf.log; will run wrf.")
     print("-----------------------------------")
     print("-----------RUNNING WRF-------------")
@@ -87,5 +87,5 @@ def run_forecast(conf):
     os.system("./"+WRFexe+" > wrf.log")
 
     grep_code = os.system("grep 'SUCCESS COMPLETE' wrf.log")
-    if grep_code == 256:
+    if grep_code > 0:
       raise Exception("Program wrf.exe did not run successfully.")

@@ -58,7 +58,7 @@ def run_geogrid(conf):
   else:
     os.chdir(WPSwork)
     grep_code = os.system("grep 'Successful completion of program geogrid.exe' geogrid.log")
-    if grep_code == 256:
+    if grep_code > 0:
       print("Did not see success complete in geogrid.log; will run geogrid.")
       print("-----------------------------------")
       print("----------RUNNING GEOGRID----------")
@@ -67,7 +67,7 @@ def run_geogrid(conf):
       os.system("./"+GEOGRIDexe)
 
       grep_code = os.system("grep 'Successful completion of program geogrid.exe' geogrid.log")
-      if grep_code == 256:
+      if grep_code > 0:
         raise Exception('Program geogrid.exe did not run successfully.')
 
 def run_ungrib(conf):
@@ -77,7 +77,7 @@ def run_ungrib(conf):
 
   os.chdir(WPSwork)
   grep_code = os.system("grep 'Successful completion of program ungrib.exe' ungrib.log")
-  if grep_code == 256:
+  if grep_code > 0:
     print("Did not see success complete in ungrib.log; will run ungrib.")
     print("-----------------------------------")
     print("----------RUNNING UNGRIB-----------")
@@ -85,7 +85,7 @@ def run_ungrib(conf):
     os.system("./"+UNGRIBexe)
 
     grep_code = os.system("grep 'Successful completion of program ungrib.exe' ungrib.log")
-    if grep_code == 256:
+    if grep_code > 0:
       raise Exception('Program ungrib.exe did not run successfully.')
 
 def run_metgrid(conf):
@@ -95,7 +95,7 @@ def run_metgrid(conf):
 
   os.chdir(WPSwork)
   grep_code = os.system("grep 'Successful completion of program metgrid.exe' metgrid.log")
-  if grep_code == 256:
+  if grep_code > 0:
     print("Did not see success complete in metgrid.log; will run metgrid.")
     print("-----------------------------------")
     print("----------RUNNING METGRID----------")
@@ -103,5 +103,5 @@ def run_metgrid(conf):
     os.system("./"+METGRIDexe)
 
     grep_code = os.system("grep 'Successful completion of program metgrid.exe' metgrid.log")
-    if grep_code == 256:
+    if grep_code > 0:
       raise Exception('Program metgrid.exe did not run successfully.')
