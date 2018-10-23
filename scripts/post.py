@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 from matplotlib.cm import get_cmap
 import cartopy.crs as crs
-from cartopy.feature import NaturalEarthFeature
+import cartopy.feature as cfeature
+import cartopy.io.shapereader as shpreader
 from scipy import interpolate
 
 from wrf import to_np, getvar, interplevel, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords, ALL_TIMES
@@ -47,6 +48,10 @@ def lnsf_post(item,POSTwork):
 
 def init_post(conf):
 
+  print("-----------------------------------")
+  print("-----------IN POST TASK------------")
+  print("-----------------------------------")
+
   WRFwork = conf.get("DEFAULT","WRFwork") 
   POSTwork = conf.get("DEFAULT","POSTwork")
 
@@ -61,6 +66,8 @@ def init_post(conf):
   lnsf_post(WRFwork+"/wrfout*",POSTwork)
 
 def run_post(conf):
+
+  FIXdir = conf.get("DEFAULT","FIXbwrf")
 
   sfc_switch = conf.getint("post","plot_sfc")
   switch_700mb = conf.getint("post","plot_700mb")
@@ -80,8 +87,12 @@ def run_post(conf):
   init_time = file_wrf[11:21]+" "+file_wrf[22:24]+"Z"
 
 # Download the states and coastlines
-  states = NaturalEarthFeature(category='cultural', scale='50m', facecolor='none',
+  states = cfeature.NaturalEarthFeature(category='cultural', scale='50m', facecolor='none',
                              name='admin_1_states_provinces_shp')
+# Get counties.
+  reader = shpreader.Reader(FIXdir+'/shapefiles/countyp010g.shp')
+  counties = list(reader.geometries())
+  COUNTIES = cfeature.ShapelyFeature(counties, crs.PlateCarree())
 
 # Open the NetCDF file
   ncfile = Dataset(file_wrf)
@@ -96,7 +107,7 @@ def run_post(conf):
 # mfmy = getvar(ncfile, "MAPFAC_MY", timeidx=ALL_TIMES)
 
 # Reflectivity
-  ref = getvar(ncfile, "dbz", timeidx=ALL_TIMES)
+  ref = getvar(ncfile, "REFL_10CM", timeidx=ALL_TIMES)
   ref[0,0,0,0]=-19.0 # hack to plot a blank contour plot at the initial time
 
 # Get upper-air quantities.
@@ -196,6 +207,7 @@ def run_post(conf):
 
 #   Add the states and coastlines
       ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
       ax.coastlines('50m', linewidth=0.8)
 
 #   Reflectivity at the lowest model level.
@@ -249,6 +261,7 @@ def run_post(conf):
 
 #   Add the states and coastlines
       ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
       ax.coastlines('50m', linewidth=0.8)
 
 #   wind color fill
@@ -303,6 +316,7 @@ def run_post(conf):
 
 #   Add the states and coastlines
       ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
       ax.coastlines('50m', linewidth=0.8)
 
 #   rh color fill
@@ -365,6 +379,7 @@ def run_post(conf):
 
 #   Add the states and coastlines
       ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
       ax.coastlines('50m', linewidth=0.8)
 
 #   Make the 300 mb height contours.
