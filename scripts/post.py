@@ -11,7 +11,7 @@ import cartopy.feature as cfeature
 import cartopy.io.shapereader as shpreader
 from scipy import interpolate
 
-from wrf import to_np, getvar, interplevel, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords, ALL_TIMES
+from wrf import CoordPair, vertcross, to_np, getvar, interplevel, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords, ALL_TIMES, ll_to_xy
 
 def interpnan(array):
 
@@ -59,6 +59,8 @@ def init_post(conf):
   if not POSTwork_exists:
     os.mkdir(POSTwork)
     os.mkdir(POSTwork+"/sfc")
+    os.mkdir(POSTwork+"/sfcdiags")
+    os.mkdir(POSTwork+"/xcdiags")
     os.mkdir(POSTwork+"/700mb")
     os.mkdir(POSTwork+"/500mb")
     os.mkdir(POSTwork+"/300mb")
@@ -70,6 +72,8 @@ def run_post(conf):
   FIXdir = conf.get("DEFAULT","FIXbwrf")
 
   sfc_switch = conf.getint("post","plot_sfc")
+  sfcdiags_switch = 0
+  xcdiags_switch = 1
   switch_700mb = conf.getint("post","plot_700mb")
   switch_500mb = conf.getint("post","plot_500mb")
   switch_300mb = conf.getint("post","plot_300mb")
@@ -137,6 +141,7 @@ def run_post(conf):
   w_700 = interplevel(w, p, 700)
   rh_700 = interplevel(rh, p, 700)
 
+  switch_700mb = 0
   if switch_700mb == 1:
 
 # Interpolate over NaNs.
@@ -193,6 +198,86 @@ def run_post(conf):
 
 # Get the cartopy mapping object
   cart_proj = get_cartopy(slp)
+
+  if sfcdiags_switch == 1:
+
+#   Create a figure
+    fig = plt.figure(figsize=(12,9))
+    fileout = "accump_ts.png"    
+
+  # should be variable ACSNOW
+  #  accumulated_snow = getvar(ncfile, "SNOWNC", timeidx=ALL_TIMES)
+
+    bx, by = ll_to_xy(ncfile, blat, blon, meta=False, as_int=True)
+    liq_equiv = (getvar(ncfile, "RAINC", timeidx=ALL_TIMES) +
+                 getvar(ncfile, "RAINNC", timeidx=ALL_TIMES))/25.4 # mm to inches
+
+    
+    plt.plot(times, liq_equiv[:,by,bx])
+    plt.xlim(min(times), max(times))
+    plt.title("Forecast Precipitation: Boulder, CO")
+    plt.xlabel("Time (UTC)")
+    plt.ylabel("Inches of Liquid")
+
+    fig.savefig("sfcdiags/"+fileout,bbox_inches='tight')
+    plt.close(fig)
+
+  if xcdiags_switch == 1:
+
+    zinterp = np.arange(550, 875, 5)
+
+    u_xc = vertcross(u, p, levels=zinterp, wrfin=ncfile,
+      stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
+
+    w_xc = vertcross(w, p, levels=zinterp, wrfin=ncfile,
+      stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
+
+    tc_xc = vertcross(tc, p, levels=zinterp, wrfin=ncfile,
+      stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
+
+    nx = np.shape(u_xc)[-1]
+    xinterp = np.arange(0,nx,1)
+
+    bx, by = ll_to_xy(ncfile, blat, blon, meta=False, as_int=True)
+
+    for itime in range(numTimes):
+
+#     Create a figure
+      fig = plt.figure(figsize=(12,9))
+      fileout = "mtnwave_xc"+str(itime).zfill(2)+".png"
+
+      ax=plt.gca()
+      ax.set_facecolor("black")
+
+      plt.contourf(xinterp, zinterp, u_xc[itime,:,:], 
+        cmap=get_cmap("seismic"), levels=np.arange(-50,55,5))
+      plt.colorbar(shrink=.62)
+
+      w_contour = plt.contour(xinterp, zinterp, w_xc[itime,:,:],
+        "--", levels=np.arange(-30,0,5),colors="black")
+      plt.clabel(w_contour, inline=1, fontsize=10, fmt="%i")
+
+      w_contour = plt.contour(xinterp, zinterp, w_xc[itime,:,:],
+        levels=np.arange(5,35,5),colors="black")
+      plt.clabel(w_contour, inline=1, fontsize=10, fmt="%i")
+
+      t_contour = plt.contour(xinterp, zinterp, tc_xc[itime,:,:],
+        levels=[-20,-10,0], colors="yellow")
+      plt.clabel(t_contour, inline=1, fontsize=10, fmt="%i")
+
+#     Add location of Boulder to plot.
+      plt.scatter(bx,np.max(zinterp),c='r',marker='+')
+
+      plt.ylim([np.max(zinterp),np.min(zinterp)])
+#      plt.yscale("log")
+#      plt.xticks([np.arange(900,475,-25)], ["900", "875", 
+#        "850", "825", "800", "775", "750", "725", "700", "675", "650",
+#        "625", "600", "575", "550", "525", "500"])
+
+      fig.savefig("xcdiags/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    stop
 
   if sfc_switch == 1:
 
