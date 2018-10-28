@@ -72,8 +72,8 @@ def run_post(conf):
   FIXdir = conf.get("DEFAULT","FIXbwrf")
 
   sfc_switch = conf.getint("post","plot_sfc")
-  sfcdiags_switch = 0
-  xcdiags_switch = 1
+  sfcdiags_switch = 1
+  xcdiags_switch = 0
   switch_700mb = conf.getint("post","plot_700mb")
   switch_500mb = conf.getint("post","plot_500mb")
   switch_300mb = conf.getint("post","plot_300mb")
@@ -187,6 +187,7 @@ def run_post(conf):
 
 # Get the 10-m u and v wind components.
   u_10m, v_10m = getvar(ncfile, "uvmet10", units="kt", timeidx=ALL_TIMES)
+  wind_10m = (u_10m**2.0+v_10m**2.0)**0.5
 
 # Smooth the sea level pressure since it tends to be noisy near the mountains
   smooth_slp = smooth2d(slp, 3)
@@ -201,26 +202,78 @@ def run_post(conf):
 
   if sfcdiags_switch == 1:
 
+    bx, by = ll_to_xy(ncfile, blat, blon, meta=False, as_int=True)
+
 #   Create a figure
     fig = plt.figure(figsize=(12,9))
-    fileout = "accump_ts.png"    
+    fileout = "precip.png"
 
   # should be variable ACSNOW
   #  accumulated_snow = getvar(ncfile, "SNOWNC", timeidx=ALL_TIMES)
 
-    bx, by = ll_to_xy(ncfile, blat, blon, meta=False, as_int=True)
     liq_equiv = (getvar(ncfile, "RAINC", timeidx=ALL_TIMES) +
                  getvar(ncfile, "RAINNC", timeidx=ALL_TIMES))/25.4 # mm to inches
 
-    
-    plt.plot(times, liq_equiv[:,by,bx])
+    liq_equiv_bdu = liq_equiv[:,by,bx]
+
+    prate = np.zeros(numTimes)
+
+    for itime in range(numTimes):
+
+      if itime > 0 and itime < numTimes-1:
+        prate[itime] = 0.5*((liq_equiv_bdu[itime+1]+liq_equiv_bdu[itime]) - 
+                            (liq_equiv_bdu[itime-1]+liq_equiv_bdu[itime]))
+      elif itime == 0:
+        prate[0] = liq_equiv_bdu[0] 
+      else:
+        prate[numTimes-1] = liq_equiv_bdu[numTimes-1]-liq_equiv_bdu[numTimes-2]
+
+    plt.bar(times, prate, width=0.0425, color="black")
+    plt.plot(times, liq_equiv_bdu, color="blue")
     plt.xlim(min(times), max(times))
     plt.title("Forecast Precipitation: Boulder, CO")
     plt.xlabel("Time (UTC)")
-    plt.ylabel("Inches of Liquid")
+    plt.ylabel("Running total (line) and rate (bars, inches of liquid)")
+
+    plt.grid(b=True, which="major", axis="both", color="gray", linestyle="--")
 
     fig.savefig("sfcdiags/"+fileout,bbox_inches='tight')
     plt.close(fig)
+
+#   Create a figure
+    fig, ax1 = plt.subplots(figsize=(12,9))
+    fileout = "t2m_td2m_wind10m_prate.png"
+
+    t2m = 1.8*(getvar(ncfile, "T2", timeidx=ALL_TIMES)-273.15)+32.
+    td2m = getvar(ncfile, "td2", units="degF", timeidx=ALL_TIMES)
+
+    color = 'tab:blue'
+    ax1.bar(times, prate, width=0.0425, color="blue")
+    ax1.plot(times, liq_equiv_bdu, color="blue")
+    ax1.set_ylim(0.,max([max(prate)/0.1+0.01,max(liq_equiv_bdu)+0.1]))
+    ax1.set_xlabel("Time (UTC)")
+    ax1.set_ylabel("Precipitation liquid amount (in) and rate (bars, in/hr)", color=color)
+    ax1.tick_params(axis="y", labelcolor=color)
+    ax1.grid(b=True, which="major", axis="x", color="gray", linestyle="--")
+
+    ax2=ax1.twinx()
+    ax2.plot(times, wind_10m[:,by,bx], color="black")
+    ax2.barbs(times, wind_10m[:,by,bx], u_10m[:,by,bx], v_10m[:,by,bx])
+
+    ax2.plot(times, t2m[:,by,bx], color="red")
+    ax2.plot(times, td2m[:,by,bx], color="green")
+
+    ax2.set_xlim(min(times), max(times))
+    plt.title("Forecast near-surface variables: Boulder, CO")
+    ax2.set_ylabel("2-m T (red) and 2-m Td (green, degF), 10-m wind (black, kt)")
+
+    ax2.grid(b=True, which="major", axis="y", color="gray", linestyle="--")
+
+    fig.tight_layout()
+    fig.savefig("sfcdiags/"+fileout,bbox_inches='tight')
+    plt.close(fig)
+
+    stop
 
   if xcdiags_switch == 1:
 
