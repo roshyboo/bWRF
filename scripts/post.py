@@ -72,8 +72,8 @@ def run_post(conf):
   FIXdir = conf.get("DEFAULT","FIXbwrf")
 
   sfc_switch = conf.getint("post","plot_sfc")
-  sfcdiags_switch = 1
-  xcdiags_switch = 0
+  sfcdiags_switch = conf.getint("post","plot_sfcdiags")
+  xcdiags_switch = conf.getint("post","plot_xcdiags")
   switch_700mb = conf.getint("post","plot_700mb")
   switch_500mb = conf.getint("post","plot_500mb")
   switch_300mb = conf.getint("post","plot_300mb")
@@ -141,7 +141,6 @@ def run_post(conf):
   w_700 = interplevel(w, p, 700)
   rh_700 = interplevel(rh, p, 700)
 
-  switch_700mb = 0
   if switch_700mb == 1:
 
 # Interpolate over NaNs.
@@ -273,8 +272,6 @@ def run_post(conf):
     fig.savefig("sfcdiags/"+fileout,bbox_inches='tight')
     plt.close(fig)
 
-    stop
-
   if xcdiags_switch == 1:
 
     zinterp = np.arange(550, 875, 5)
@@ -330,7 +327,7 @@ def run_post(conf):
       fig.savefig("xcdiags/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    stop
+    os.system("convert -delay 25 -dispose background xcdiags/mtnwave_xc*.png -loop 0 xcdiags/mtnwave_xc.gif")
 
   if sfc_switch == 1:
 
