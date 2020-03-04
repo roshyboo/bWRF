@@ -12,7 +12,7 @@ config.read(['../parm/bwrf.conf'])
 # and import the modules.
 SCRIPTSbwrf = config.get("DEFAULT","SCRIPTSbwrf")
 sys.path.append(SCRIPTSbwrf)
-import launcher, inputs, wps, forecast, post
+import launcher, inputs, wps, forecast, post, publish
 
 # Run the bWRF system.
 launcher.launch(config)
@@ -39,5 +39,9 @@ post_start=time.time()
 post.init_post(config)
 post.run_post(config)
 print("Total time in post: ", (time.time()-post_start)/60.0, " minutes")
+
+publish_start=time.time()
+publish.run_publish(config)
+print("Total time in publish: ", (time.time()-publish_start)/60.0, " minutes")
 
 print("Total time to run bWRF: ", (time.time()-start)/60.0, " minutes")
