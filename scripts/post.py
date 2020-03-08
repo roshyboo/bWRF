@@ -4,12 +4,18 @@ import os
 import numpy as np
 import glob
 import matplotlib.pyplot as plt
+import pandas as pd
 plt.switch_backend('agg')
 from matplotlib.cm import get_cmap
 import cartopy.crs as crs
 import cartopy.feature as cfeature
 import cartopy.io.shapereader as shpreader
 from scipy import interpolate
+
+import metpy.calc as mpcalc
+from metpy.cbook import get_test_data
+from metpy.plots import add_metpy_logo, SkewT
+from metpy.units import units
 
 from wrf import CoordPair, vertcross, to_np, getvar, interplevel, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords, ALL_TIMES, ll_to_xy
 
@@ -59,8 +65,12 @@ def init_post(conf):
   if not POSTwork_exists:
     os.mkdir(POSTwork)
     os.mkdir(POSTwork+"/sfc")
+    os.mkdir(POSTwork+"/sfc_temp")
     os.mkdir(POSTwork+"/sfcdiags")
+    os.mkdir(POSTwork+"/sounding")
     os.mkdir(POSTwork+"/xcdiags")
+    os.mkdir(POSTwork+"/xcdiags_rh")
+    os.mkdir(POSTwork+"/xcdiags_rh_big")
     os.mkdir(POSTwork+"/700mb")
     os.mkdir(POSTwork+"/500mb")
     os.mkdir(POSTwork+"/300mb")
@@ -77,6 +87,13 @@ def run_post(conf):
   switch_700mb = conf.getint("post","plot_700mb")
   switch_500mb = conf.getint("post","plot_500mb")
   switch_300mb = conf.getint("post","plot_300mb")
+
+#  sfc_switch = 1
+#  sfcdiags_switch = 0
+#  xcdiags_switch = 0
+#  switch_700mb = 0
+#  switch_500mb = 0
+#  switch_300mb = 0
 
   blat = conf.getfloat("post","blat")
   blon = conf.getfloat("post","blon")
@@ -112,7 +129,7 @@ def run_post(conf):
 
 # Reflectivity
   ref = getvar(ncfile, "REFL_10CM", timeidx=ALL_TIMES)
-  ref[0,0,0,0]=-19.0 # hack to plot a blank contour plot at the initial time
+  ref[0,0,0,0]=-21.0 # hack to plot a blank contour plot at the initial time
 
 # Get upper-air quantities.
   p = getvar(ncfile, "pressure", timeidx=ALL_TIMES)
@@ -122,6 +139,7 @@ def run_post(conf):
   rh = getvar(ncfile, "rh", timeidx=ALL_TIMES)
   wspeed = (u**2.0+v**2.0)**0.5
   tc = getvar(ncfile, "tc", timeidx=ALL_TIMES)
+  dewT = getvar(ncfile, "td", units="degC", timeidx=ALL_TIMES)
 
 # Interpolate
   z_500 = smooth2d(interplevel(z, p, 500), 3)
@@ -172,17 +190,18 @@ def run_post(conf):
   z_levels=np.arange(504,620,3)
   z_levels_300=np.arange(804,996,6)
   z_levels_700=np.arange(285,351,3)
+  t2_levels=np.arange(-20,125,5)
   tc_levels=np.arange(-40,30,2)
   wspeed_levels=np.arange(40,150,10)
   ref_levels=np.arange(-20,60,5)
   rh_levels=np.arange(70,105,5)
   twb_levels=np.arange(0,1,1)
 
-  wup_levels=np.arange(1,50,2)
-  wdown_levels=np.arange(-49,0,2)
+  wup_levels=np.arange(5,55,10)
+  wdown_levels=np.arange(-55,-5,10)
 
-  div_levels=np.arange(2,20,2)
-  conv_levels=np.arange(-20,0,2)
+  div_levels=np.arange(-110,120,10)
+#  conv_levels=np.arange(-110,-10,10)
 
 # Get the 10-m u and v wind components.
   u_10m, v_10m = getvar(ncfile, "uvmet10", units="kt", timeidx=ALL_TIMES)
@@ -274,7 +293,7 @@ def run_post(conf):
 
   if xcdiags_switch == 1:
 
-    zinterp = np.arange(550, 875, 5)
+    zinterp = np.arange(550, 880, 10)
 
     u_xc = vertcross(u, p, levels=zinterp, wrfin=ncfile,
       stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
@@ -283,6 +302,9 @@ def run_post(conf):
       stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
 
     tc_xc = vertcross(tc, p, levels=zinterp, wrfin=ncfile,
+      stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
+
+    rh_xc = vertcross(rh, p, levels=zinterp, wrfin=ncfile,
       stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
 
     nx = np.shape(u_xc)[-1]
@@ -304,11 +326,11 @@ def run_post(conf):
       plt.colorbar(shrink=.62)
 
       w_contour = plt.contour(xinterp, zinterp, w_xc[itime,:,:],
-        "--", levels=np.arange(-30,0,5),colors="black")
+        "--", levels=np.arange(-120,-20,20),colors="black")
       plt.clabel(w_contour, inline=1, fontsize=10, fmt="%i")
 
       w_contour = plt.contour(xinterp, zinterp, w_xc[itime,:,:],
-        levels=np.arange(5,35,5),colors="black")
+        levels=np.arange(20,120,20),colors="black")
       plt.clabel(w_contour, inline=1, fontsize=10, fmt="%i")
 
       t_contour = plt.contour(xinterp, zinterp, tc_xc[itime,:,:],
@@ -324,12 +346,163 @@ def run_post(conf):
 #        "850", "825", "800", "775", "750", "725", "700", "675", "650",
 #        "625", "600", "575", "550", "525", "500"])
 
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": zonal wind (fill, kt), temp (yellow lines, degC), VV (black lines, cm/s)")
+
       fig.savefig("xcdiags/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background xcdiags/mtnwave_xc*.png -loop 0 xcdiags/mtnwave_xc.gif")
+    os.system("convert -delay 90 -dispose background xcdiags/mtnwave_xc*.png -loop 0 xcdiags/mtnwave_xc.gif")
+
+    for itime in range(numTimes):
+
+#     Create a figure
+      fig = plt.figure(figsize=(12,9))
+      fileout = "mtnwave_xc_rh"+str(itime).zfill(2)+".png"
+
+      ax=plt.gca()
+      ax.set_facecolor("black")
+
+      plt.contourf(xinterp, zinterp, rh_xc[itime,:,:],
+        cmap=get_cmap("Greens"), levels=rh_levels, extend='both')
+      plt.colorbar(shrink=.62)
+
+      skip=2
+      plt.quiver(xinterp[::skip], zinterp[::skip], u_xc[itime,::skip,::skip], w_xc[itime,::skip,::skip]/2.,
+        scale=500, headwidth=3, color='black', pivot='middle')
+
+      t_contour = plt.contour(xinterp, zinterp, tc_xc[itime,:,:],
+        levels=[-20,-10,0], colors="yellow")
+      plt.clabel(t_contour, inline=1, fontsize=10, fmt="%i")
+
+#     Add location of Boulder to plot.
+      plt.scatter(bx,np.max(zinterp),c='r',marker='+')
+
+      plt.ylim([np.max(zinterp),np.min(zinterp)])
+
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": rh (fill), temp (yellow lines, degC), wind (arrows)")
+
+      fig.savefig("xcdiags_rh/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    os.system("convert -delay 90 -dispose background xcdiags_rh/mtnwave_xc_rh*.png -loop 0 xcdiags_rh/mtnwave_xc_rh.gif")
+
+    zinterp = np.arange(150, 900, 25)
+
+    rh_xc = vertcross(rh, p, levels=zinterp, wrfin=ncfile,
+      stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
+
+    tc_xc = vertcross(tc, p, levels=zinterp, wrfin=ncfile,
+      stagger='u', pivot_point=CoordPair(lat=blat,lon=blon), angle=90., meta=False)
+
+    nx = np.shape(u_xc)[-1]
+    xinterp = np.arange(0,nx,1)
+
+    bx, by = ll_to_xy(ncfile, blat, blon, meta=False, as_int=True)
+
+    for itime in range(numTimes):
+
+#     Create a figure
+      fig = plt.figure(figsize=(12,9))
+      fileout = "mtnwave_xc_rh_big"+str(itime).zfill(2)+".png"
+
+      ax=plt.gca()
+      ax.set_facecolor("black")
+
+      plt.contourf(xinterp, zinterp, rh_xc[itime,:,:],
+        cmap=get_cmap("Greens"), levels=rh_levels, extend='both')
+      plt.colorbar(shrink=.62)
+
+      t_contour = plt.contour(xinterp, zinterp, tc_xc[itime,:,:],
+        levels=[-20,-10,0], colors="yellow")
+      plt.clabel(t_contour, inline=1, fontsize=10, fmt="%i")
+
+#     Add location of Boulder to plot.
+      plt.scatter(bx,np.max(zinterp),c='r',marker='+')
+
+      plt.ylim([np.max(zinterp),np.min(zinterp)])
+
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": rh (fill), temp (yellow lines, degC)")
+
+      fig.savefig("xcdiags_rh_big/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    os.system("convert -delay 90 -dispose background xcdiags_rh_big/mtnwave_xc_rh_big*.png -loop 0 xcdiags_rh_big/mtnwave_xc_rh_big.gif")
 
   if sfc_switch == 1:
+
+    bx, by = ll_to_xy(ncfile, blat, blon, meta=False, as_int=True)
+
+    for itime in range(numTimes):
+
+      ps = p[itime,:,by,bx]
+      ps_temp = ps
+      T = tc[itime,:,by,bx]
+      Td = dewT[itime,:,by,bx]
+      us = u[itime,:,by,bx]
+      vs = v[itime,:,by,bx]
+
+      ps = ps[ps_temp >= 100.]
+      T = T[ps_temp >= 100.]
+      Td = Td[ps_temp >= 100.]
+      us = us[ps_temp >= 100.]
+      vs = vs[ps_temp >= 100.]
+
+      fig = plt.figure(figsize=(9, 9))
+      skew = SkewT(fig, rotation=45)
+
+      fileout = "sounding"+str(itime).zfill(2)+".png"
+
+#     Plot the data using normal plotting functions, in this case using
+#     log scaling in Y, as dictated by the typical meteorological plot.
+      skew.plot(ps, T, 'r')
+      skew.plot(ps, Td, 'g')
+      skew.plot_barbs(ps, us, vs)
+      skew.ax.set_ylim(1000, 100)
+      skew.ax.set_xlim(-40, 60)
+
+#     Calculate LCL height and plot as black dot. Because `p`'s first value is
+#     ~1000 mb and its last value is ~250 mb, the `0` index is selected for
+#     `p`, `T`, and `Td` to lift the parcel from the surface. If `p` was inverted,
+#     i.e. start from low value, 250 mb, to a high value, 1000 mb, the `-1` index
+#     should be selected.
+      lcl_pressure, lcl_temperature = mpcalc.lcl(ps[0], T[0], Td[0])
+      skew.plot(lcl_pressure, lcl_temperature, 'ko', markerfacecolor='black')
+
+#     Calculate full parcel profile and add to plot as black line
+      prof = mpcalc.parcel_profile(ps, T[0], Td[0]).to('degC')
+      skew.plot(ps, prof, 'k', linewidth=2)
+
+#     Shade areas of CAPE and CIN
+#      skew.shade_cin(ps, T, prof, Td)
+      [cape, cin] = mpcalc.cape_cin(ps, T, Td, prof)
+#      skew.shade_cape(ps, T, prof)
+
+#     An example of a slanted line at constant T -- in this case the 0
+#     isotherm
+      skew.ax.axvline(0, color='c', linestyle='--', linewidth=2)
+
+#     Add the relevant special lines
+      skew.plot_dry_adiabats()
+      skew.plot_moist_adiabats()
+      skew.plot_mixing_lines()
+
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": Boulder, CO, CAPE: "+str(round(cape.magnitude))+" J/kg CIN: "+str(round(cin.magnitude))+" J/kg")
+      fig.savefig("sounding/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    os.system("convert -delay 90 -dispose background sounding/sounding*.png -loop 0 sounding/sounding.gif")
 
     for itime in range(numTimes):
 
@@ -381,7 +554,98 @@ def run_post(conf):
       fig.savefig("sfc/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background sfc/sfc*.png -loop 0 sfc/sfc.gif")
+    os.system("convert -delay 90 -dispose background sfc/sfc*.png -loop 0 sfc/sfc.gif")
+
+    for itime in range(numTimes):
+
+#   Create a figure
+      fig = plt.figure(figsize=(12,9))
+      fileout = "sfc_temp_fhr"+str(itime).zfill(2)+".png"
+
+#   Set the GeoAxes to the projection used by WRF
+      ax = plt.axes(projection=cart_proj)
+
+#   Add the states and coastlines
+      ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
+      ax.coastlines('50m', linewidth=0.8)
+
+#   2-m air temperature
+      t2 = 1.8*(getvar(ncfile, "T2", timeidx=ALL_TIMES) - 273.15)+32.
+      plt.contourf(to_np(lons), to_np(lats), to_np(t2[itime,:,:]), transform=crs.PlateCarree(),
+             cmap=get_cmap("jet"), levels=t2_levels)
+
+#   Add a color bar
+      plt.colorbar(ax=ax, shrink=.62)
+
+#   Make the contour outlines and filled contours for the smoothed sea level pressure.
+      c_p = plt.contour(to_np(lons), to_np(lats), to_np(smooth_slp[itime,:,:]), transform=crs.PlateCarree(),
+             colors="black", levels=slp_levels)
+      plt.clabel(c_p, inline=1, fontsize=10, fmt="%i")
+
+#   Add location of Boulder to plot.
+      plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
+
+#   Add the 10-m wind barbs, only plotting every other data point.
+      skip=2
+      plt.barbs(to_np(lons[::skip,::skip]), to_np(lats[::skip,::skip]), to_np(u_10m[itime, ::skip, ::skip]),
+          to_np(v_10m[itime, ::skip, ::skip]), transform=crs.PlateCarree(), length=5.25, linewidth=0.5)
+
+#   Set the map limits.
+      ax.set_xlim(cartopy_xlim(smooth_slp))
+      ax.set_ylim(cartopy_ylim(smooth_slp))
+
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": SLP (contours, hPa), 10-m wind (barbs, kt), 2-m T (fill, degF)")
+      fig.savefig("sfc_temp/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    os.system("convert -delay 90 -dispose background sfc_temp/sfc_temp*.png -loop 0 sfc_temp/sfc_temp.gif")
+
+    for itime in range(numTimes):
+
+#   Create a figure
+      fig = plt.figure(figsize=(12,9))
+      fileout = "col_rh_fhr"+str(itime).zfill(2)+".png"
+
+#   Set the GeoAxes to the projection used by WRF
+      ax = plt.axes(projection=cart_proj)
+
+#   Add the states and coastlines
+      ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
+      ax.coastlines('50m', linewidth=0.8)
+
+#   Compute and plot the column-maximum RH as a proxy for cloud cover.
+      col_rh = np.amax(rh[itime,:,:,:],axis=0)
+      plt.contourf(to_np(lons), to_np(lats), to_np(col_rh), transform=crs.PlateCarree(),
+             cmap=get_cmap("Greens"), levels=rh_levels, extend='both')
+
+#   Add a color bar
+      plt.colorbar(ax=ax, shrink=.62)
+
+#   Make the contour outlines and filled contours for the smoothed sea level pressure.
+      c_p = plt.contour(to_np(lons), to_np(lats), to_np(smooth_slp[itime,:,:]), transform=crs.PlateCarree(),
+             colors="black", levels=slp_levels)
+      plt.clabel(c_p, inline=1, fontsize=10, fmt="%i")
+
+#   Add location of Boulder to plot.
+      plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
+
+#   Set the map limits.
+      ax.set_xlim(cartopy_xlim(smooth_slp))
+      ax.set_ylim(cartopy_ylim(smooth_slp))
+
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": Maximum-column RH (fill)")
+      fig.savefig("col_rh/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    os.system("convert -delay 90 -dispose background col_rh/col_rh*.png -loop 0 col_rh/col_rh.gif")
 
   if switch_500mb == 1:
 
@@ -436,7 +700,7 @@ def run_post(conf):
       fig.savefig("500mb/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background 500mb/500mb*.png -loop 0 500mb/500mb.gif")
+    os.system("convert -delay 90 -dispose background 500mb/500mb*.png -loop 0 500mb/500mb.gif")
 
   if switch_700mb == 1:
 
@@ -456,7 +720,7 @@ def run_post(conf):
 
 #   rh color fill
       plt.contourf(to_np(lons), to_np(lats), to_np(rh_700[itime,:,:]), transform=crs.PlateCarree(),
-             cmap=get_cmap("Greens"), levels=rh_levels)
+             cmap=get_cmap("Greens"), levels=rh_levels, extend='both')
 
 #   Add a color bar
       plt.colorbar(ax=ax, shrink=.62)
@@ -499,7 +763,7 @@ def run_post(conf):
       fig.savefig("700mb/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background 700mb/700mb*.png -loop 0 700mb/700mb.gif")
+    os.system("convert -delay 90 -dispose background 700mb/700mb*.png -loop 0 700mb/700mb.gif")
 
   if switch_300mb == 1:
 
@@ -517,19 +781,26 @@ def run_post(conf):
       ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
       ax.coastlines('50m', linewidth=0.8)
 
+#   300 mb divergence
+      plt.contourf(to_np(lons), to_np(lats), to_np(div_300[itime,:,:]), transform=crs.PlateCarree(),
+             cmap=get_cmap("seismic"), levels=div_levels)
+
+#   Add a color bar
+      plt.colorbar(ax=ax, shrink=.62)
+
 #   Make the 300 mb height contours.
       c_z = plt.contour(to_np(lons), to_np(lats), to_np(z_300[itime,:,:]), transform=crs.PlateCarree(),
              colors="black", levels=z_levels_300)
       plt.clabel(c_z, inline=1, fontsize=10, fmt="%i")
 
 #   Make the 300 mb divergence contours.
-      c_d = plt.contour(to_np(lons), to_np(lats), to_np(div_300[itime,:,:]), transform=crs.PlateCarree(),
-             colors="red", levels=div_levels, linewidths=0.8)
-      plt.clabel(c_d, inline=1, fontsize=10, fontcolor="red", fmt="%i")
-
-      c_c = plt.contour(to_np(lons), to_np(lats), to_np(div_300[itime,:,:]), transform=crs.PlateCarree(),
-             colors="blue", levels=conv_levels, linewidths=0.8)
-      plt.clabel(c_c, inline=1, fontsize=10, fontcolor="blue", fmt="%i")
+#      c_d = plt.contour(to_np(lons), to_np(lats), to_np(div_300[itime,:,:]), transform=crs.PlateCarree(),
+#             colors="red", levels=div_levels, linewidths=0.8)
+#      plt.clabel(c_d, inline=1, fontsize=10, fontcolor="red", fmt="%i")
+#
+#      c_c = plt.contour(to_np(lons), to_np(lats), to_np(div_300[itime,:,:]), transform=crs.PlateCarree(),
+#             colors="blue", levels=conv_levels, linewidths=0.8)
+#      plt.clabel(c_c, inline=1, fontsize=10, fontcolor="blue", fmt="%i")
 
 #   Add location of Boulder to plot.
       plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
@@ -550,4 +821,4 @@ def run_post(conf):
       fig.savefig("300mb/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 25 -dispose background 300mb/300mb*.png -loop 0 300mb/300mb.gif")
+    os.system("convert -delay 90 -dispose background 300mb/300mb*.png -loop 0 300mb/300mb.gif")

@@ -6,13 +6,19 @@ def launch(conf):
 # If so, figure out the cycle to run.
   aYMDH = conf.get("DEFAULT","aYMDH")
   aHH = conf.get("DEFAULT","aHH")
+  aYMD = aYMDH[:-2]
 
   if aYMDH == "AUTO":
-    currentYMD = datetime.datetime.now()
+    if aHH == "00":
+      currentYMD = datetime.date.today()+datetime.timedelta(days=1)
+    else:
+      currentYMD = datetime.datetime.now()
     aYMD = currentYMD.strftime("%Y%m%d")
     aYMDH = aYMD + aHH
     print("Will run the "+aYMDH+" cycle")
     conf.set("DEFAULT","aYMDH",aYMDH)
+    
+  conf.set("DEFAULT","aYMD",aYMD)
 
 # Create the work directory.
   WORKbwrf=conf.get("DEFAULT","WORKbwrf")
