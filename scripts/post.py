@@ -65,6 +65,10 @@ def init_post(conf):
   if not POSTwork_exists:
     os.mkdir(POSTwork)
     os.mkdir(POSTwork+"/sfc")
+    os.mkdir(POSTwork+"/cldfrac")
+    os.mkdir(POSTwork+"/low_cldfrac")
+    os.mkdir(POSTwork+"/mid_cldfrac")
+    os.mkdir(POSTwork+"/high_cldfrac")
     os.mkdir(POSTwork+"/sfc_temp")
     os.mkdir(POSTwork+"/sfcdiags")
     os.mkdir(POSTwork+"/sounding")
@@ -82,13 +86,15 @@ def run_post(conf):
   FIXdir = conf.get("DEFAULT","FIXbwrf")
 
   sfc_switch = conf.getint("post","plot_sfc")
+  cloud_switch = conf.getint("post","plot_clouds")
   sfcdiags_switch = conf.getint("post","plot_sfcdiags")
   xcdiags_switch = conf.getint("post","plot_xcdiags")
   switch_700mb = conf.getint("post","plot_700mb")
   switch_500mb = conf.getint("post","plot_500mb")
   switch_300mb = conf.getint("post","plot_300mb")
 
-#  sfc_switch = 1
+#  sfc_switch = 0
+#  cloud_switch = 0
 #  sfcdiags_switch = 0
 #  xcdiags_switch = 0
 #  switch_700mb = 0
@@ -123,10 +129,6 @@ def run_post(conf):
   dtimes = [datetime.strptime(str(atime), '%Y-%m-%dT%H:%M:%S.000000000') for atime in times]
   numTimes = len(times)
 
-# Map factors
-# mfmx = getvar(ncfile, "MAPFAC_MX", timeidx=ALL_TIMES)
-# mfmy = getvar(ncfile, "MAPFAC_MY", timeidx=ALL_TIMES)
-
 # Reflectivity
   ref = getvar(ncfile, "REFL_10CM", timeidx=ALL_TIMES)
   ref[0,0,0,0]=-21.0 # hack to plot a blank contour plot at the initial time
@@ -140,6 +142,11 @@ def run_post(conf):
   wspeed = (u**2.0+v**2.0)**0.5
   tc = getvar(ncfile, "tc", timeidx=ALL_TIMES)
   dewT = getvar(ncfile, "td", units="degC", timeidx=ALL_TIMES)
+  cloudfrac = getvar(ncfile, "cloudfrac", low_thresh=15., timeidx=ALL_TIMES, meta=False)
+  total_cloudfrac=np.max(cloudfrac,axis=0)
+  low_cloudfrac = cloudfrac[0,:,:,:]
+  mid_cloudfrac = cloudfrac[1,:,:,:]
+  high_cloudfrac = cloudfrac[2,:,:,:]
 
 # Interpolate
   z_500 = smooth2d(interplevel(z, p, 500), 3)
@@ -176,8 +183,6 @@ def run_post(conf):
     tc_700 = smooth2d(tc_700, 3)
     w_700 = smooth2d(w_700, 3)
 
-# dx=30000.*mfmx # mfmx = map factor on mass grid in x direction
-# dy=30000.*mfmy # mfmy = map factor on mass grid in y direction
   div_300 = smooth2d(divergence([u_300*0.514444, v_300*0.514444], dx), 3) # kt to m/s
 
 # Get the sea level pressure
@@ -195,13 +200,13 @@ def run_post(conf):
   wspeed_levels=np.arange(40,150,10)
   ref_levels=np.arange(-20,60,5)
   rh_levels=np.arange(70,105,5)
+  cldfrac_levels=np.arange(0,110,10)
   twb_levels=np.arange(0,1,1)
 
   wup_levels=np.arange(5,55,10)
   wdown_levels=np.arange(-55,-5,10)
 
   div_levels=np.arange(-110,120,10)
-#  conv_levels=np.arange(-110,-10,10)
 
 # Get the 10-m u and v wind components.
   u_10m, v_10m = getvar(ncfile, "uvmet10", units="kt", timeidx=ALL_TIMES)
@@ -604,11 +609,13 @@ def run_post(conf):
 
     os.system("convert -delay 90 -dispose background sfc_temp/sfc_temp*.png -loop 0 sfc_temp/sfc_temp.gif")
 
+  if cloud_switch == 1:
+
     for itime in range(numTimes):
 
 #   Create a figure
       fig = plt.figure(figsize=(12,9))
-      fileout = "col_rh_fhr"+str(itime).zfill(2)+".png"
+      fileout = "cldfrac_fhr"+str(itime).zfill(2)+".png"
 
 #   Set the GeoAxes to the projection used by WRF
       ax = plt.axes(projection=cart_proj)
@@ -618,34 +625,139 @@ def run_post(conf):
       ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
       ax.coastlines('50m', linewidth=0.8)
 
-#   Compute and plot the column-maximum RH as a proxy for cloud cover.
-      col_rh = np.amax(rh[itime,:,:,:],axis=0)
-      plt.contourf(to_np(lons), to_np(lats), to_np(col_rh), transform=crs.PlateCarree(),
-             cmap=get_cmap("Greens"), levels=rh_levels, extend='both')
+#   Compute and plot the total cloud fraction.
+      plt.contourf(to_np(lons), to_np(lats), to_np(total_cloudfrac[itime,:,:]), transform=crs.PlateCarree(),
+             cmap=get_cmap("Greys"), levels=cldfrac_levels, extend='both')
 
 #   Add a color bar
       plt.colorbar(ax=ax, shrink=.62)
-
-#   Make the contour outlines and filled contours for the smoothed sea level pressure.
-      c_p = plt.contour(to_np(lons), to_np(lats), to_np(smooth_slp[itime,:,:]), transform=crs.PlateCarree(),
-             colors="black", levels=slp_levels)
-      plt.clabel(c_p, inline=1, fontsize=10, fmt="%i")
 
 #   Add location of Boulder to plot.
       plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
 
 #   Set the map limits.
-      ax.set_xlim(cartopy_xlim(smooth_slp))
-      ax.set_ylim(cartopy_ylim(smooth_slp))
+      ax.set_xlim(cartopy_xlim(cloudfrac))
+      ax.set_ylim(cartopy_ylim(cloudfrac))
 
       plt_time=str(dtimes[itime])
       plt_time=plt_time[0:13]
 
-      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": Maximum-column RH (fill)")
-      fig.savefig("col_rh/"+fileout,bbox_inches='tight')
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": Total cloud fraction (fill)")
+      fig.savefig("cldfrac/"+fileout,bbox_inches='tight')
       plt.close(fig)
 
-    os.system("convert -delay 90 -dispose background col_rh/col_rh*.png -loop 0 col_rh/col_rh.gif")
+    os.system("convert -delay 90 -dispose background cldfrac/cldfrac*.png -loop 0 cldfrac/cldfrac.gif")
+
+    for itime in range(numTimes):
+
+#   Create a figure
+      fig = plt.figure(figsize=(12,9))
+      fileout = "low_cldfrac_fhr"+str(itime).zfill(2)+".png"
+
+#   Set the GeoAxes to the projection used by WRF
+      ax = plt.axes(projection=cart_proj)
+
+#   Add the states and coastlines
+      ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
+      ax.coastlines('50m', linewidth=0.8)
+
+#   Compute and plot the cloud fraction.
+      plt.contourf(to_np(lons), to_np(lats), to_np(low_cloudfrac[itime,:,:]), transform=crs.PlateCarree(),
+             cmap=get_cmap("Greys"), levels=cldfrac_levels, extend='both')
+
+#   Add a color bar
+      plt.colorbar(ax=ax, shrink=.62)
+
+#   Add location of Boulder to plot.
+      plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
+
+#   Set the map limits.
+      ax.set_xlim(cartopy_xlim(low_cloudfrac))
+      ax.set_ylim(cartopy_ylim(low_cloudfrac))
+
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": Low cloud fraction (fill)")
+      fig.savefig("low_cldfrac/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    os.system("convert -delay 90 -dispose background low_cldfrac/low_cldfrac*.png -loop 0 low_cldfrac/low_cldfrac.gif")
+
+    for itime in range(numTimes):
+
+#   Create a figure
+      fig = plt.figure(figsize=(12,9))
+      fileout = "mid_cldfrac_fhr"+str(itime).zfill(2)+".png"
+
+#   Set the GeoAxes to the projection used by WRF
+      ax = plt.axes(projection=cart_proj)
+
+#   Add the states and coastlines
+      ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
+      ax.coastlines('50m', linewidth=0.8)
+
+#   Compute and plot the cloud fraction.
+      plt.contourf(to_np(lons), to_np(lats), to_np(mid_cloudfrac[itime,:,:]), transform=crs.PlateCarree(),
+             cmap=get_cmap("Greys"), levels=cldfrac_levels, extend='both')
+
+#   Add a color bar
+      plt.colorbar(ax=ax, shrink=.62)
+
+#   Add location of Boulder to plot.
+      plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
+
+#   Set the map limits.
+      ax.set_xlim(cartopy_xlim(mid_cloudfrac))
+      ax.set_ylim(cartopy_ylim(mid_cloudfrac))
+
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": Mid cloud fraction (fill)")
+      fig.savefig("mid_cldfrac/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    os.system("convert -delay 90 -dispose background mid_cldfrac/mid_cldfrac*.png -loop 0 mid_cldfrac/mid_cldfrac.gif")
+
+    for itime in range(numTimes):
+
+#   Create a figure
+      fig = plt.figure(figsize=(12,9))
+      fileout = "high_cldfrac_fhr"+str(itime).zfill(2)+".png"
+
+#   Set the GeoAxes to the projection used by WRF
+      ax = plt.axes(projection=cart_proj)
+
+#   Add the states and coastlines
+      ax.add_feature(states, linewidth=0.8, edgecolor='gray')
+      ax.add_feature(COUNTIES, linewidth=0.4, facecolor='none', edgecolor='gray')
+      ax.coastlines('50m', linewidth=0.8)
+
+#   Compute and plot the cloud fraction.
+      plt.contourf(to_np(lons), to_np(lats), to_np(high_cloudfrac[itime,:,:]), transform=crs.PlateCarree(),
+             cmap=get_cmap("Greys"), levels=cldfrac_levels, extend='both')
+
+#   Add a color bar
+      plt.colorbar(ax=ax, shrink=.62)
+
+#   Add location of Boulder to plot.
+      plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
+
+#   Set the map limits.
+      ax.set_xlim(cartopy_xlim(high_cloudfrac))
+      ax.set_ylim(cartopy_ylim(high_cloudfrac))
+
+      plt_time=str(dtimes[itime])
+      plt_time=plt_time[0:13]
+
+      plt.title(plt_time+"Z fhr "+str(itime).zfill(2)+": High cloud fraction (fill)")
+      fig.savefig("high_cldfrac/"+fileout,bbox_inches='tight')
+      plt.close(fig)
+
+    os.system("convert -delay 90 -dispose background high_cldfrac/high_cldfrac*.png -loop 0 high_cldfrac/high_cldfrac.gif")
 
   if switch_500mb == 1:
 
