@@ -1,4 +1,4 @@
-import subprocess
+import subprocess, time
 
 def run_publish(conf):
 
@@ -15,5 +15,7 @@ def run_publish(conf):
          '/sfcdiags/t2m_td2m_wind10m_prate.png','/xcdiags/mtnwave_xc.gif',
          '/xcdiags_rh/mtnwave_xc_rh.gif','/xcdiags_rh_big/mtnwave_xc_rh_big.gif']
 
-  for item in files:
+  for ix,item in enumerate(files):
+    if ix == 10:
+      time.sleep(30)
     subprocess.call(["scp", POSTwork+item, "doubloo1@doubloondefender.com:public_html/plots/"])
