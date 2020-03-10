@@ -5,6 +5,7 @@ import numpy as np
 import glob
 import matplotlib.pyplot as plt
 import pandas as pd
+from pandas.plotting import register_matplotlib_converters
 plt.switch_backend('agg')
 from matplotlib.cm import get_cmap
 import cartopy.crs as crs
@@ -18,6 +19,8 @@ from metpy.plots import add_metpy_logo, SkewT
 from metpy.units import units
 
 from wrf import CoordPair, vertcross, to_np, getvar, interplevel, smooth2d, get_cartopy, cartopy_xlim, cartopy_ylim, latlon_coords, ALL_TIMES, ll_to_xy
+
+register_matplotlib_converters()
 
 def interpnan(array):
 
@@ -142,7 +145,8 @@ def run_post(conf):
   wspeed = (u**2.0+v**2.0)**0.5
   tc = getvar(ncfile, "tc", timeidx=ALL_TIMES)
   dewT = getvar(ncfile, "td", units="degC", timeidx=ALL_TIMES)
-  cloudfrac = getvar(ncfile, "cloudfrac", low_thresh=15., timeidx=ALL_TIMES, meta=False)
+  cloudfrac = getvar(ncfile, "cloudfrac", low_thresh=30., 
+                     mid_thresh=955., high_thresh=4500., timeidx=ALL_TIMES)
   total_cloudfrac=np.max(cloudfrac,axis=0)
   low_cloudfrac = cloudfrac[0,:,:,:]
   mid_cloudfrac = cloudfrac[1,:,:,:]
@@ -200,7 +204,7 @@ def run_post(conf):
   wspeed_levels=np.arange(40,150,10)
   ref_levels=np.arange(-20,60,5)
   rh_levels=np.arange(70,105,5)
-  cldfrac_levels=np.arange(0,110,10)
+  cldfrac_levels=np.arange(0.,1.1,0.1)
   twb_levels=np.arange(0,1,1)
 
   wup_levels=np.arange(5,55,10)
@@ -673,8 +677,8 @@ def run_post(conf):
       plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
 
 #   Set the map limits.
-      ax.set_xlim(cartopy_xlim(low_cloudfrac))
-      ax.set_ylim(cartopy_ylim(low_cloudfrac))
+      ax.set_xlim(cartopy_xlim(cloudfrac))
+      ax.set_ylim(cartopy_ylim(cloudfrac))
 
       plt_time=str(dtimes[itime])
       plt_time=plt_time[0:13]
@@ -710,8 +714,8 @@ def run_post(conf):
       plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
 
 #   Set the map limits.
-      ax.set_xlim(cartopy_xlim(mid_cloudfrac))
-      ax.set_ylim(cartopy_ylim(mid_cloudfrac))
+      ax.set_xlim(cartopy_xlim(cloudfrac))
+      ax.set_ylim(cartopy_ylim(cloudfrac))
 
       plt_time=str(dtimes[itime])
       plt_time=plt_time[0:13]
@@ -747,8 +751,8 @@ def run_post(conf):
       plt.scatter(blon,blat,c='r',marker='+',transform=crs.PlateCarree())
 
 #   Set the map limits.
-      ax.set_xlim(cartopy_xlim(high_cloudfrac))
-      ax.set_ylim(cartopy_ylim(high_cloudfrac))
+      ax.set_xlim(cartopy_xlim(cloudfrac))
+      ax.set_ylim(cartopy_ylim(cloudfrac))
 
       plt_time=str(dtimes[itime])
       plt_time=plt_time[0:13]
