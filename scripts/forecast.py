@@ -47,9 +47,12 @@ def init_wrf(conf):
   lnsf_wrf(WRFhome+"/"+ozone_lat,WRFwork)
   lnsf_wrf(WRFhome+"/"+REALexe,WRFwork)
   lnsf_wrf(WRFhome+"/"+WRFexe,WRFwork)
-  lnsf_wrf(FIXbwrf+"/"+qr_acr_qs,WRFwork)
-  lnsf_wrf(FIXbwrf+"/"+qr_acr_qg,WRFwork)
-  lnsf_wrf(FIXbwrf+"/"+freezeH2O,WRFwork)
+  if os.path.isfile(FIXbwrf+"/"+qr_acr_qs):
+    lnsf_wrf(FIXbwrf+"/"+qr_acr_qs,WRFwork)
+  if os.path.isfile(FIXbwrf+"/"+qr_acr_qg):
+    lnsf_wrf(FIXbwrf+"/"+qr_acr_qg,WRFwork)
+  if os.path.isfile(FIXbwrf+"/"+freezeH2O):
+    lnsf_wrf(FIXbwrf+"/"+freezeH2O,WRFwork)
   lnsf_wrf(WPSwork+"/met_em.*.nc",WRFwork)
 
 def run_real(conf):
