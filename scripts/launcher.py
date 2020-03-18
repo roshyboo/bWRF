@@ -44,6 +44,8 @@ def launch(conf):
   wps_nml['share']['start_date'] = fYMDH_start.strftime('%Y-%m-%d_%H:00:00')
   wps_nml['share']['end_date'] = fYMDH_end.strftime('%Y-%m-%d_%H:00:00')
 
+  wrf_nml['time_control']['run_hours'] = run_hours
+
   wrf_nml['time_control']['start_year'] = fYMDH_start.year
   wrf_nml['time_control']['start_month'] = fYMDH_start.month
   wrf_nml['time_control']['start_day'] = fYMDH_start.day
