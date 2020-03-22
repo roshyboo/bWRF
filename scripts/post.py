@@ -145,7 +145,7 @@ def run_post(conf):
   wspeed = (u**2.0+v**2.0)**0.5
   tc = getvar(ncfile, "tc", timeidx=ALL_TIMES)
   dewT = getvar(ncfile, "td", units="degC", timeidx=ALL_TIMES)
-  cloudfrac = getvar(ncfile, "cloudfrac", low_thresh=30., 
+  cloudfrac = getvar(ncfile, "cloudfrac", low_thresh=20., 
                      mid_thresh=955., high_thresh=4500., timeidx=ALL_TIMES)
   total_cloudfrac=np.max(cloudfrac,axis=0)
   low_cloudfrac = cloudfrac[0,:,:,:]
